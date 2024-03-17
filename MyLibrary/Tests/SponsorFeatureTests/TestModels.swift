@@ -29,4 +29,7 @@ extension Sponsor {
   static func sponsorWithLink(id: Int, name: String) -> Self {
     Sponsor(id: id, name: name, imageName: "imageName", link: URL(string: "http://example.com")!)
   }
+  static func sponsorWithoutLink(id: Int, name: String) -> Self {
+    Sponsor(id: id, name: name, imageName: "imageName")
+  }
 }
