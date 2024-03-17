@@ -82,5 +82,13 @@ let package = Package(
         .product(name: "ComposableArchitecture", package: "swift-composable-architecture"),
       ]
     ),
+
+    .testTarget(
+      name: "trySwiftFeatureTests",
+      dependencies: [
+        "trySwiftFeature",
+        .product(name: "ComposableArchitecture", package: "swift-composable-architecture"),
+      ]
+    ),
   ]
 )
