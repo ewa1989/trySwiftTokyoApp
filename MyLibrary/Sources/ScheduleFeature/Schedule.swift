@@ -29,7 +29,10 @@ public struct Schedule {
     @Presents var destination: Destination.State?
 
     public init() {
-      try! Tips.configure([.displayFrequency(.immediate)])
+      // change try? from try!
+      // for avoiding TipKit.TipKitError.Value.tipsDatastoreAlreadyConfigured
+      // when executing multiple tests
+      try? Tips.configure([.displayFrequency(.immediate)])
     }
   }
 
