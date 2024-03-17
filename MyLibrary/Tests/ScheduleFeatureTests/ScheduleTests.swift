@@ -62,6 +62,30 @@ final class ScheduleTests: XCTestCase {
     // ensure to finish running all side effects
     await clock.advance(by: .seconds(1))
   }
+
+  @MainActor
+  func test_view_disclosureTapped_sessionWithDetailInfo_presentDetail() async {
+    let store = TestStore(initialState: Schedule.State()) {
+      Schedule()
+    }
+
+    let session: Session = .sessionWithDetailInfo
+    await store.send(.view(.disclosureTapped(session))) {
+      $0.path.append(.detail(ScheduleDetail.State(title: session.title,
+                                                  description: session.description!,
+                                                  requirements: session.requirements!,
+                                                  speakers: session.speakers!)))
+    }
+  }
+
+  @MainActor
+  func test_view_disclosureTapped_sessionWithoutDetailInfo_doNothing() async {
+    let store = TestStore(initialState: Schedule.State()) {
+      Schedule()
+    }
+
+    await store.send(.view(.disclosureTapped(.sessionWithoutDetailInfo)))
+  }
 }
 
 private extension Conference {
@@ -82,18 +106,25 @@ private extension Date {
 
 private extension [SharedModels.Schedule] {
   static func havingOneSession(at date: Date) -> Self {
-    [Schedule(time: Date.now, sessions: [.sampleSession])]
+    [Schedule(time: Date.now, sessions: [.sessionWithDetailInfo])]
   }
 }
 
 private extension Session {
-  static let sampleSession = Session(
+  static let sessionWithDetailInfo = Session(
     title: "sessionTitle",
     speakers: [.sampleSpeaker],
     place: "sessionPlace",
     description: "sessionDescription",
     requirements: "sessionRequirements"
   )
+
+  static let sessionWithoutDetailInfo = Session(
+    title: "sessionTitle",
+    speakers: nil, 
+    place: nil,
+    description: nil,
+    requirements: nil)
 }
 
 private extension Speaker {
