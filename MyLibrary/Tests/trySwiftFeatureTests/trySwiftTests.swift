@@ -6,11 +6,13 @@ import ComposableArchitecture
 final class trySwiftTests: XCTestCase {
 
   @MainActor
-  func test_justCreateTeststore() async {
+  func test_view_organizerTapped_presentOrganizers() async {
     let store = TestStore(initialState: TrySwift.State()) {
       TrySwift()
     }
 
-    XCTAssertNotNil(store)
+    await store.send(.view(.organizerTapped)) {
+      $0.path.append(.organizers(.init()))
+    }
   }
 }
