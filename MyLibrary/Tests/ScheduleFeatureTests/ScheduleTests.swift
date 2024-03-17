@@ -41,7 +41,7 @@ final class ScheduleTests: XCTestCase {
   }
 
   @MainActor
-  func test_view_mapItemTapped_onVisionOS_presentGuidance() async throws {
+  func test_view_mapItemTapped_onVisionOS_openURL() async throws {
     #if os(iOS) || os(macOS)
       throw XCTSkip("this test is for visionOS")
     #endif
