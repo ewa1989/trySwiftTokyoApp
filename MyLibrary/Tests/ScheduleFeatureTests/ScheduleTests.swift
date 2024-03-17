@@ -26,7 +26,11 @@ final class ScheduleTests: XCTestCase {
   }
 
   @MainActor
-  func test_view_mapItemTapped_presentGuidance() async {
+  func test_view_mapItemTapped_onIOSAndMacOS_presentGuidance() async throws {
+    #if os(visionOS)
+      throw XCTSkip("this test is for iOS and macOS")
+    #endif
+
     let store = TestStore(initialState: Schedule.State()) {
       Schedule()
     }
@@ -34,6 +38,29 @@ final class ScheduleTests: XCTestCase {
     await store.send(.view(.mapItemTapped)) {
       $0.destination = .guidance(.init(url: URL(string: "https://twitter.com/tryswiftconf/status/1108474796788977664")!))
     }
+  }
+
+  @MainActor
+  func test_view_mapItemTapped_onVisionOS_presentGuidance() async throws {
+    #if os(iOS) || os(macOS)
+      throw XCTSkip("this test is for visionOS")
+    #endif
+
+    let clock = TestClock()
+    let store = TestStore(initialState: Schedule.State()) {
+      Schedule()
+    } withDependencies: {
+      $0.openURL = OpenURLEffect {
+        XCTAssertEqual($0, URL(string: "https://twitter.com/tryswiftconf/status/1108474796788977664"))
+        return true
+      }
+      $0.continuousClock = clock
+    }
+
+    await store.send(.view(.mapItemTapped))
+
+    // ensure to finish running all side effects
+    await clock.advance(by: .seconds(1))
   }
 }
 
