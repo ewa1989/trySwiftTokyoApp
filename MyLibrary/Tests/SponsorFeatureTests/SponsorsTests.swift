@@ -50,4 +50,43 @@ final class SponsorsTests: XCTestCase {
     let sponsorWithoutLink: Sponsor = .sponsorWithoutLink(id: 1, name: "sponsorWithoutLink")
     await store.send(.view(.sponsorTapped(sponsorWithoutLink)))
   }
+
+  @MainActor
+  func test_view_sponsorTapped_sponsorWithLink_onVisionOS_openURL() async throws {
+    #if os(iOS) || os(macOS)
+      throw XCTSkip("this test is for visionOS")
+    #endif
+
+    let sponsorWithLink: Sponsor = .sponsorWithLink(id: 1, name: "sponsorWithLink")
+
+    let clock = TestClock()
+    let store = TestStore(initialState: SponsorsList.State()) {
+      SponsorsList()
+    } withDependencies: {
+      $0.openURL = OpenURLEffect {
+        XCTAssertEqual($0, sponsorWithLink.link)
+        return true
+      }
+      $0.continuousClock = clock
+    }
+
+    await store.send(.view(.sponsorTapped(sponsorWithLink)))
+
+    // ensure to finish running all side effects
+    await clock.advance(by: .seconds(1))
+  }
+
+  @MainActor
+  func test_view_sponsorTapped_sponsorWithoutLink_onVisionOS_doNothing() async throws {
+    #if os(iOS) || os(macOS)
+      throw XCTSkip("this test is for visionOS")
+    #endif
+
+    let clock = TestClock()
+    let store = TestStore(initialState: SponsorsList.State()) {
+      SponsorsList()
+    }
+
+    await store.send(.view(.sponsorTapped(.sponsorWithoutLink(id: 1, name: "sponsorWithoutLink"))))
+  }
 }
