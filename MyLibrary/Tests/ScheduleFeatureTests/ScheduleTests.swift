@@ -24,6 +24,17 @@ final class ScheduleTests: XCTestCase {
       $0.workshop = .workshopSample
     }
   }
+
+  @MainActor
+  func test_view_mapItemTapped_presentGuidance() async {
+    let store = TestStore(initialState: Schedule.State()) {
+      Schedule()
+    }
+
+    await store.send(.view(.mapItemTapped)) {
+      $0.destination = .guidance(.init(url: URL(string: "https://twitter.com/tryswiftconf/status/1108474796788977664")!))
+    }
+  }
 }
 
 private extension Conference {
