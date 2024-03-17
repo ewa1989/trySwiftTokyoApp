@@ -35,7 +35,7 @@ public struct Sponsors: Codable, Equatable, Hashable, Sendable {
     ]
   }
 
-  init(
+  public init(
     platinum: [Sponsor], gold: [Sponsor], silver: [Sponsor], bronze: [Sponsor],
     diversity: [Sponsor], student: [Sponsor], community: [Sponsor], individual: [Sponsor]
   ) {
