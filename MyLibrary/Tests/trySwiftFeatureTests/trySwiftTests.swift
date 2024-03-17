@@ -91,4 +91,15 @@ final class trySwiftTests: XCTestCase {
     // ensure to finish running all side effects
     await clock.advance(by: .seconds(1))
   }
+
+  @MainActor
+  func test_view_acknowledgementsTapped_presentOrganizers() async {
+    let store = TestStore(initialState: TrySwift.State()) {
+      TrySwift()
+    }
+
+    await store.send(.view(.acknowledgementsTapped)) {
+      $0.path.append(.acknowledgements(.init()))
+    }
+  }
 }
