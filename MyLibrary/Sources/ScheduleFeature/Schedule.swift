@@ -231,35 +231,61 @@ public struct ScheduleView: View {
     VStack(alignment: .leading, spacing: 8) {
       Text(conference.date, style: .date)
         .font(.title2)
-      ForEach(conference.schedules, id: \.self) { schedule in
-        VStack(alignment: .leading, spacing: 4) {
-          Text(schedule.time, style: .time)
-            .font(.subheadline.bold())
-          ForEach(schedule.sessions, id: \.self) { session in
-            if session.description != nil {
-              Button {
-                send(.disclosureTapped(session))
-              } label: {
-                listRow(session: session)
-                  .padding()
+
+      if hasNoItemsToShow(on: conference) {
+        noItemsToShowMessage()
+      } else {
+        ForEach(conference.schedules, id: \.self) { schedule in
+          VStack(alignment: .leading, spacing: 4) {
+            if hasSomeItemsToShow(on: schedule) {
+              Text(schedule.time, style: .time)
+                .font(.subheadline.bold())
+              ForEach(schedule.sessions, id: \.self) { session in
+                if session.description != nil {
+                  Button {
+                    send(.disclosureTapped(session))
+                  } label: {
+                    listRow(session: session)
+                      .padding()
+                  }
+                  .background(
+                    Color(uiColor: .secondarySystemBackground)
+                      .clipShape(RoundedRectangle(cornerRadius: 8))
+                  )
+                } else {
+                  listRow(session: session)
+                    .padding()
+                    .background(
+                      Color(uiColor: .secondarySystemBackground)
+                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                    )
+                }
               }
-              .background(
-                Color(uiColor: .secondarySystemBackground)
-                  .clipShape(RoundedRectangle(cornerRadius: 8))
-              )
-            } else {
-              listRow(session: session)
-                .padding()
-                .background(
-                  Color(uiColor: .secondarySystemBackground)
-                    .clipShape(RoundedRectangle(cornerRadius: 8))
-                )
             }
           }
         }
       }
     }
     .padding()
+  }
+
+  func hasSomeItemsToShow(on schedule: SharedModels.Schedule) -> Bool {
+    store.favoritedOnlyFilterEnabled
+  }
+
+  func hasNoItemsToShow(on conference: Conference) -> Bool {
+    !store.favoritedOnlyFilterEnabled
+  }
+
+  @ViewBuilder
+  func noItemsToShowMessage() -> some View {
+    Text(String(localized: "No items to show.", bundle: .module))
+      .frame(maxWidth: .infinity, alignment: .leading)
+      .padding()
+      .background(
+        Color(uiColor: .secondarySystemBackground)
+          .clipShape(RoundedRectangle(cornerRadius: 8))
+      )
   }
 
   @ViewBuilder

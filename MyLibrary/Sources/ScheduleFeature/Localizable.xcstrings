@@ -759,6 +759,16 @@
         }
       }
     },
+    "No items to show." : {
+      "localizations" : {
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "表示できるものがありません。"
+          }
+        }
+      }
+    },
     "Office hour %@" : {
       "extractionState" : "manual",
       "localizations" : {
