@@ -26,6 +26,7 @@ public struct Schedule {
     var day1: Conference?
     var day2: Conference?
     var workshop: Conference?
+    var favoritedOnlyFilterEnabled: Bool = false
     @Presents var destination: Destination.State?
 
     public init() {
@@ -44,6 +45,7 @@ public struct Schedule {
       case disclosureTapped(Session)
       case mapItemTapped
       case favoriteIconTapped(Session)
+      case favoritedOnlyFilterItemTapped
     }
   }
 
@@ -111,6 +113,9 @@ public struct Schedule {
           try? dataClient.saveDay2(day2)
           try? dataClient.saveWorkshop(workshop)
         }
+      case .view(.favoritedOnlyFilterItemTapped):
+        state.favoritedOnlyFilterEnabled.toggle()
+        return .none
       case .binding, .path, .destination:
         return .none
       }
@@ -195,12 +200,30 @@ public struct ScheduleView: View {
           .popoverTip(mapTip)
 
       }
+
+      ToolbarItem(placement: .topBarLeading) {
+        favoritedOnlyFilter(enabled: store.favoritedOnlyFilterEnabled)
+          .onTapGesture {
+            send(.favoritedOnlyFilterItemTapped)
+          }
+      }
     }
     .onAppear(perform: {
       send(.onAppear)
     })
     .navigationTitle(Text("Schedule", bundle: .module))
     .searchable(text: $store.searchText, isPresented: $store.isSearchBarPresented)
+  }
+
+  @ViewBuilder
+  func favoritedOnlyFilter(enabled: Bool) -> some View {
+    if enabled {
+      Image(systemName: "star.fill")
+        .foregroundColor(.yellow)
+    } else {
+      Image(systemName: "star")
+        .foregroundColor(.gray)
+    }
   }
 
   @ViewBuilder
