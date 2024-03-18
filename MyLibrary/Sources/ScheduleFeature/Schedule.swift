@@ -45,7 +45,6 @@ public struct Schedule {
       case disclosureTapped(Session)
       case mapItemTapped
       case favoriteIconTapped(Session)
-      case favoritedOnlyFilterItemTapped
     }
   }
 
@@ -113,9 +112,6 @@ public struct Schedule {
           try? dataClient.saveDay2(day2)
           try? dataClient.saveWorkshop(workshop)
         }
-      case .view(.favoritedOnlyFilterItemTapped):
-        state.favoritedOnlyFilterEnabled.toggle()
-        return .none
       case .binding, .path, .destination:
         return .none
       }
@@ -200,13 +196,6 @@ public struct ScheduleView: View {
           .popoverTip(mapTip)
 
       }
-
-      ToolbarItem(placement: .topBarLeading) {
-        favoritedOnlyFilter(enabled: store.favoritedOnlyFilterEnabled)
-          .onTapGesture {
-            send(.favoritedOnlyFilterItemTapped)
-          }
-      }
     }
     .onAppear(perform: {
       send(.onAppear)
@@ -216,19 +205,19 @@ public struct ScheduleView: View {
   }
 
   @ViewBuilder
-  func favoritedOnlyFilter(enabled: Bool) -> some View {
-    if enabled {
-      Image(systemName: "star.fill")
-        .foregroundColor(.yellow)
-    } else {
-      Image(systemName: "star")
-        .foregroundColor(.gray)
-    }
-  }
-
-  @ViewBuilder
   func conferenceList(conference: Conference) -> some View {
     VStack(alignment: .leading, spacing: 8) {
+      Toggle(isOn: $store.favoritedOnlyFilterEnabled) {
+        Text(String(localized: "Favorites only", bundle: .module))
+          .font(.title3)
+      }
+      .frame(maxWidth: .infinity, alignment: .leading)
+      .padding()
+      .background(
+        Color(uiColor: .secondarySystemBackground)
+          .clipShape(RoundedRectangle(cornerRadius: 8))
+      )
+
       Text(conference.date, style: .date)
         .font(.title2)
 

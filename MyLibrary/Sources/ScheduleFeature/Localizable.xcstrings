@@ -326,6 +326,16 @@
         }
       }
     },
+    "Favorites only" : {
+      "localizations" : {
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "お気に入り"
+          }
+        }
+      }
+    },
     "Getting started with controlling LEGO using Swift" : {
       "extractionState" : "manual",
       "localizations" : {
