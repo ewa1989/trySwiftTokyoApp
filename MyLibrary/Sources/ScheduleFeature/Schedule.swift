@@ -232,49 +232,41 @@ public struct ScheduleView: View {
       Text(conference.date, style: .date)
         .font(.title2)
 
-      if hasNoItemsToShow(on: conference) {
-        noItemsToShowMessage()
-      } else {
-        ForEach(conference.schedules, id: \.self) { schedule in
+      let schedules = store.favoritedOnlyFilterEnabled ?
+        conference.schedules.filteredFavoritedOnly : conference.schedules
+      if schedules.count > 0 {
+        ForEach(schedules, id: \.self) { schedule in
           VStack(alignment: .leading, spacing: 4) {
-            if hasSomeItemsToShow(on: schedule) {
-              Text(schedule.time, style: .time)
-                .font(.subheadline.bold())
-              ForEach(schedule.sessions, id: \.self) { session in
-                if session.description != nil {
-                  Button {
-                    send(.disclosureTapped(session))
-                  } label: {
-                    listRow(session: session)
-                      .padding()
-                  }
+            Text(schedule.time, style: .time)
+              .font(.subheadline.bold())
+            ForEach(schedule.sessions, id: \.self) { session in
+              if session.description != nil {
+                Button {
+                  send(.disclosureTapped(session))
+                } label: {
+                  listRow(session: session)
+                    .padding()
+                }
+                .background(
+                  Color(uiColor: .secondarySystemBackground)
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                )
+              } else {
+                listRow(session: session)
+                  .padding()
                   .background(
                     Color(uiColor: .secondarySystemBackground)
                       .clipShape(RoundedRectangle(cornerRadius: 8))
                   )
-                } else {
-                  listRow(session: session)
-                    .padding()
-                    .background(
-                      Color(uiColor: .secondarySystemBackground)
-                        .clipShape(RoundedRectangle(cornerRadius: 8))
-                    )
-                }
               }
             }
           }
         }
+      } else {
+        noItemsToShowMessage()
       }
     }
     .padding()
-  }
-
-  func hasSomeItemsToShow(on schedule: SharedModels.Schedule) -> Bool {
-    store.favoritedOnlyFilterEnabled
-  }
-
-  func hasNoItemsToShow(on conference: Conference) -> Bool {
-    !store.favoritedOnlyFilterEnabled
   }
 
   @ViewBuilder
@@ -385,6 +377,25 @@ struct MapTip: Tip, Equatable {
     "There are two kinds of Bellesalle in Shibuya. Learn how to get from Shibuya Station to \"Bellesalle Shibuya FIRST\". ",
     bundle: .module)
   var image: Image? = .init(systemName: "map.circle.fill")
+}
+
+private extension [Session] {
+  var favorited: Self {
+    return self.filter {
+      guard let isFavorited = $0.isFavorited else {
+        return false
+      }
+      return isFavorited
+    }
+  }
+}
+
+private extension [SharedModels.Schedule] {
+  var filteredFavoritedOnly: Self {
+    self
+      .map { SharedModels.Schedule(time: $0.time, sessions: $0.sessions.favorited) }
+      .filter { $0.sessions.count > 0 }
+  }
 }
 
 #Preview {
