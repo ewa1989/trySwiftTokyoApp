@@ -26,7 +26,6 @@ public struct Schedule {
     var day1: Conference?
     var day2: Conference?
     var workshop: Conference?
-    var favoritedOnlyFilterEnabled: Bool = false
     var selectedFilter: Action.FilterItem = .all
     @Presents var destination: Destination.State?
 
