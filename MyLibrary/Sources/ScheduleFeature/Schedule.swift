@@ -27,6 +27,7 @@ public struct Schedule {
     var day2: Conference?
     var workshop: Conference?
     var favoritedOnlyFilterEnabled: Bool = false
+    var selectedFilter: Action.FilterItem = .all
     @Presents var destination: Destination.State?
 
     public init() {
@@ -45,7 +46,11 @@ public struct Schedule {
       case disclosureTapped(Session)
       case mapItemTapped
       case favoriteIconTapped(Session)
-      case favoritedOnlyFilterItemTapped
+    }
+
+    public enum FilterItem: String, CaseIterable {
+      case all = "All"
+      case favorite = "Favorite"
     }
   }
 
@@ -113,9 +118,6 @@ public struct Schedule {
           try? dataClient.saveDay2(day2)
           try? dataClient.saveWorkshop(workshop)
         }
-      case .view(.favoritedOnlyFilterItemTapped):
-        state.favoritedOnlyFilterEnabled.toggle()
-        return .none
       case .binding, .path, .destination:
         return .none
       }
@@ -202,10 +204,19 @@ public struct ScheduleView: View {
       }
 
       ToolbarItem(placement: .topBarLeading) {
-        favoritedOnlyFilter(enabled: store.favoritedOnlyFilterEnabled)
-          .onTapGesture {
-            send(.favoritedOnlyFilterItemTapped)
+        Menu {
+          Picker(String(localized: "Filter", bundle: .module), selection: $store.selectedFilter, content: {
+            ForEach(Schedule.Action.FilterItem.allCases, id:\.self) { item in
+              Text(String(localized: String.LocalizationValue(item.rawValue), bundle: .module))
+                .tag(item)
+            }
+          })
+        } label: {
+          HStack {
+            Image(systemName: "line.horizontal.3.decrease")
+            Text(String(localized: "Filter", bundle: .module))
           }
+        }
       }
     }
     .onAppear(perform: {
@@ -216,24 +227,12 @@ public struct ScheduleView: View {
   }
 
   @ViewBuilder
-  func favoritedOnlyFilter(enabled: Bool) -> some View {
-    if enabled {
-      Image(systemName: "star.fill")
-        .foregroundColor(.yellow)
-    } else {
-      Image(systemName: "star")
-        .foregroundColor(.gray)
-    }
-  }
-
-  @ViewBuilder
   func conferenceList(conference: Conference) -> some View {
     VStack(alignment: .leading, spacing: 8) {
       Text(conference.date, style: .date)
         .font(.title2)
 
-      let schedules = store.favoritedOnlyFilterEnabled ?
-        conference.schedules.filteredFavoritedOnly : conference.schedules
+      let schedules = extractFilteredSchedules(from: conference)
       if schedules.count > 0 {
         ForEach(schedules, id: \.self) { schedule in
           VStack(alignment: .leading, spacing: 4) {
@@ -347,6 +346,15 @@ public struct ScheduleView: View {
     } else {
       Image(systemName: "star")
         .foregroundColor(.gray)
+    }
+  }
+
+  func extractFilteredSchedules(from conference: Conference) -> [SharedModels.Schedule] {
+    switch store.selectedFilter {
+    case .all:
+      return conference.schedules
+    case .favorite:
+      return conference.schedules.filteredFavoritedOnly
     }
   }
 

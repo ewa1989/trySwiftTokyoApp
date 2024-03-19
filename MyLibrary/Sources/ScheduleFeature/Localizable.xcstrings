@@ -55,6 +55,16 @@
         }
       }
     },
+    "All" : {
+      "localizations" : {
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "全て"
+          }
+        }
+      }
+    },
     "As most people tend to use cloud sync services to store relevant content, we will explore File Provider framework on both iOS and macOS and all the related features: Finder and Files app integration, remote synchronisation with upload and downloads.  So let’s explore how it works on both iOS and macOS and how you can sync, upload and download files on these platforms." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -322,6 +332,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Accessibility APIを使ってアプリケーションを拡張する"
+          }
+        }
+      }
+    },
+    "Favorite" : {
+      "localizations" : {
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "お気に入り"
+          }
+        }
+      }
+    },
+    "Filter" : {
+      "localizations" : {
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "フィルター"
           }
         }
       }
