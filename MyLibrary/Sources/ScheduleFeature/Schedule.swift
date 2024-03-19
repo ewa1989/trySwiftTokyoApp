@@ -195,15 +195,6 @@ public struct ScheduleView: View {
     }
     .toolbar {
       ToolbarItem(placement: .topBarTrailing) {
-        Image(systemName: "map")
-          .onTapGesture {
-            send(.mapItemTapped)
-          }
-          .popoverTip(mapTip)
-
-      }
-
-      ToolbarItem(placement: .topBarLeading) {
         Menu {
           Picker(String(localized: "Filter", bundle: .module), selection: $store.selectedFilter, content: {
             ForEach(Schedule.Action.FilterItem.allCases, id:\.self) { item in
@@ -213,10 +204,19 @@ public struct ScheduleView: View {
           })
         } label: {
           HStack {
-            Image(systemName: "line.horizontal.3.decrease")
             Text(String(localized: "Filter", bundle: .module))
+            Image(systemName: "line.horizontal.3.decrease")
           }
         }
+      }
+
+      ToolbarItem(placement: .topBarLeading) {
+        Image(systemName: "map")
+          .onTapGesture {
+            send(.mapItemTapped)
+          }
+          .popoverTip(mapTip)
+
       }
     }
     .onAppear(perform: {
