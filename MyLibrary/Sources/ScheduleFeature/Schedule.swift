@@ -54,7 +54,7 @@ public struct Schedule {
     }
   }
 
-  public enum FilterItem: String, CaseIterable {
+  public enum FilterItem: LocalizedStringKey, CaseIterable {
     case all = "All"
     case favorite = "Favorite"
   }
@@ -199,13 +199,13 @@ public struct ScheduleView: View {
         Menu {
           Picker(String(localized: "Filter", bundle: .module), selection: $store.selectedFilter, content: {
             ForEach(Schedule.FilterItem.allCases, id:\.self) { item in
-              Text(String(localized: String.LocalizationValue(item.rawValue), bundle: .module))
+              Text(item.rawValue, bundle: .module)
                 .tag(item)
             }
           })
         } label: {
           HStack {
-            Text(String(localized: "Filter", bundle: .module))
+            Text("Filter", bundle: .module)
             Image(systemName: "line.horizontal.3.decrease")
           }
         }
@@ -262,7 +262,7 @@ public struct ScheduleView: View {
 
   @ViewBuilder
   func noItemsToShowMessage() -> some View {
-    Text(String(localized: "No items to show.", bundle: .module))
+    Text("No items to show.", bundle: .module)
       .frame(maxWidth: .infinity, alignment: .leading)
       .padding()
       .background(
