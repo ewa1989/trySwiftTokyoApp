@@ -73,4 +73,24 @@ final class ScheduleTests: XCTestCase {
       $0.favorites = noFavorites
     }
   }
+
+  @MainActor
+  func testSyncFavoritesWithDetailView() async {
+    let initialState: ScheduleFeature.Schedule.State = .selectingDay1ScheduleWithNoFavorites
+    let lastSession = initialState.day1!.schedules.first!.sessions.last!
+    let lastSessionFavorited: Favorites = .init(eachConferenceFavorites: [(initialState.day1!, [lastSession])])
+    let store = TestStore(initialState: initialState) {
+      Schedule()
+    } withDependencies: {
+      $0[FileClient.self].saveFavorites = { @Sendable in XCTAssertEqual($0, lastSessionFavorited) }
+    }
+    store.exhaustivity = .off
+
+    await store.send(.view(.disclosureTapped(lastSession)))
+    await store.send(.path(.element(id: 0, action: .detail(.delegate(.updateFavoriteState(lastSession))))))
+    await store.skipReceivedActions()
+    store.assert {
+      $0.favorites = lastSessionFavorited
+    }
+  }
 }
