@@ -16,6 +16,12 @@ public struct Schedule {
     var id: Self { self }
   }
 
+  public struct SchedulesResponse: Equatable {
+    var day1: Conference
+    var day2: Conference
+    var workshop: Conference
+  }
+
   @ObservableState
   public struct State: Equatable {
 
@@ -27,11 +33,10 @@ public struct Schedule {
     var day2: Conference?
     var workshop: Conference?
     var selectedFilter: Action.FilterItem = .all
+    var favorites: Favorites = .init(eachConferenceFavorites: [])
     @Presents var destination: Destination.State?
 
-    public init() {
-      try! Tips.configure([.displayFrequency(.immediate)])
-    }
+    public init() {}
   }
 
   public enum Action: BindableAction, ViewAction {
@@ -39,11 +44,12 @@ public struct Schedule {
     case path(StackAction<Path.State, Path.Action>)
     case destination(PresentationAction<Destination.Action>)
     case view(View)
+    case fetchResponse(Result<(schedules: SchedulesResponse, favorites: Favorites), Error>)
+    case savedFavorites(Session, Conference)
 
     public enum View {
       case onAppear
       case disclosureTapped(Session)
-      case mapItemTapped
       case favoriteIconTapped(Session)
     }
 
@@ -59,11 +65,10 @@ public struct Schedule {
   }
 
   @Reducer(state: .equatable)
-  public enum Destination {
-    case guidance(Safari)
-  }
+  public enum Destination {}
 
   @Dependency(DataClient.self) var dataClient
+  @Dependency(FileClient.self) var fileClient
   @Dependency(\.openURL) var openURL
 
   public init() {}
@@ -73,10 +78,15 @@ public struct Schedule {
     Reduce { state, action in
       switch action {
       case .view(.onAppear):
-        state.day1 = try! dataClient.fetchDay1()
-        state.day2 = try! dataClient.fetchDay2()
-        state.workshop = try! dataClient.fetchWorkshop()
-        return .none
+        return .send(
+          .fetchResponse(
+            Result {
+              let day1 = try dataClient.fetchDay1()
+              let day2 = try dataClient.fetchDay2()
+              let workshop = try dataClient.fetchWorkshop()
+              let favorites = try fileClient.loadFavorites()
+              return (.init(day1: day1, day2: day2, workshop: workshop), favorites)
+            }))
       case let .view(.disclosureTapped(session)):
         guard let description = session.description, let speakers = session.speakers else {
           return .none
@@ -92,31 +102,36 @@ public struct Schedule {
           )
         )
         return .none
-      case .view(.mapItemTapped):
-        let url = URL(string: String(localized: "Guidance URL", bundle: .module))!
-        #if os(iOS) || os(macOS)
-          state.destination = .guidance(.init(url: url))
-          return .none
-        #elseif os(visionOS)
-          return .run { _ in await openURL(url) }
-        #endif
       case let .view(.favoriteIconTapped(session)):
-        switch state.selectedDay {
+        let day = switch state.selectedDay {
         case .day1:
-          state.day1 = update(state.day1!, togglingFavoriteOf: session)
+          state.day1!
         case .day2:
-          state.day2 = update(state.day2!, togglingFavoriteOf: session)
+          state.day2!
         case .day3:
-          state.workshop = update(state.workshop!, togglingFavoriteOf: session)
+          state.workshop!
         }
-        let day1 = state.day1!
-        let day2 = state.day2!
-        let workshop = state.workshop!
-        return .run { _ in
-          try? dataClient.saveDay1(day1)
-          try? dataClient.saveDay2(day2)
-          try? dataClient.saveWorkshop(workshop)
+        var favorites = state.favorites
+        favorites.updateFavoriteState(of: session, in: day)
+        return .run { [favorites = favorites] send in
+          try? fileClient.saveFavorites(favorites)
+          await send(.savedFavorites(session, day))
         }
+      case let .savedFavorites(session, day):
+        state.favorites.updateFavoriteState(of: session, in: day)
+        return .none
+      case let .fetchResponse(.success(response)):
+        state.day1 = response.schedules.day1
+        state.day2 = response.schedules.day2
+        state.workshop = response.schedules.workshop
+        state.favorites = response.favorites
+        return .none
+      case let .fetchResponse(.failure(error as DecodingError)):
+        assertionFailure(error.localizedDescription)
+        return .none
+      case let .fetchResponse(.failure(error)):
+        print(error)  // TODO: replace to Logger API
+        return .none
       case .binding, .path, .destination:
         return .none
       }
@@ -124,20 +139,12 @@ public struct Schedule {
     .forEach(\.path, action: \.path)
     .ifLet(\.$destination, action: \.destination)
   }
-
-  private func update(_ conference: Conference, togglingFavoriteOf session: Session) -> Conference {
-    var newValue = conference
-    newValue.toggleFavorite(of: session)
-    return newValue
-  }
 }
 
 @ViewAction(for: Schedule.self)
 public struct ScheduleView: View {
 
   @Bindable public var store: StoreOf<Schedule>
-
-  let mapTip: MapTip = .init()
 
   public init(store: StoreOf<Schedule>) {
     self.store = store
@@ -153,11 +160,6 @@ public struct ScheduleView: View {
           ScheduleDetailView(store: store)
         }
       }
-    }
-    .sheet(item: $store.scope(state: \.destination?.guidance, action: \.destination.guidance)) {
-      sheetStore in
-      SafariViewRepresentation(url: sheetStore.url)
-        .ignoresSafeArea()
     }
   }
 
@@ -207,15 +209,6 @@ public struct ScheduleView: View {
             Image(systemName: "line.horizontal.3.decrease")
           }
         }
-      }
-
-      ToolbarItem(placement: .topBarLeading) {
-        Image(systemName: "map")
-          .onTapGesture {
-            send(.mapItemTapped)
-          }
-          .popoverTip(mapTip)
-
       }
     }
     .onAppear(perform: {
@@ -316,6 +309,7 @@ public struct ScheduleView: View {
         if let speakers = session.speakers {
           Text(ListFormatter.localizedString(byJoining: speakers.map(\.name)))
             .foregroundStyle(Color.init(uiColor: .label))
+            .multilineTextAlignment(.leading)
         }
         if let summary = session.summary {
           if session.title == "Office hour", let speakers = session.speakers {
@@ -339,7 +333,17 @@ public struct ScheduleView: View {
 
   @ViewBuilder
   func favoriteIcon(for session: Session) -> some View {
-    if let isFavorited = session.isFavorited, isFavorited {
+    let conference = 
+    switch store.selectedDay {
+    case .day1:
+      store.day1!
+    case .day2:
+      store.day2!
+    case .day3:
+      store.workshop!
+    }
+
+    if store.favorites.isFavorited(session, in: conference) {
       Image(systemName: "star.fill")
         .foregroundColor(.yellow)
     } else {
@@ -353,7 +357,16 @@ public struct ScheduleView: View {
     case .all:
       return conference.schedules
     case .favorite:
-      return conference.schedules.filteredFavoritedOnly
+      let day =
+      switch store.selectedDay {
+      case .day1:
+        store.day1!
+      case .day2:
+        store.day2!
+      case .day3:
+        store.workshop!
+      }
+      return conference.schedules.filtered(using: store.favorites, in: day)
     }
   }
 
@@ -378,29 +391,10 @@ public struct ScheduleView: View {
   }
 }
 
-struct MapTip: Tip, Equatable {
-  var title: Text = Text("Go Shibuya First, NOT Garden", bundle: .module)
-  var message: Text? = Text(
-    "There are two kinds of Bellesalle in Shibuya. Learn how to get from Shibuya Station to \"Bellesalle Shibuya FIRST\". ",
-    bundle: .module)
-  var image: Image? = .init(systemName: "map.circle.fill")
-}
-
-private extension [Session] {
-  var favorited: Self {
-    return self.filter {
-      guard let isFavorited = $0.isFavorited else {
-        return false
-      }
-      return isFavorited
-    }
-  }
-}
-
 private extension [SharedModels.Schedule] {
-  var filteredFavoritedOnly: Self {
+  func filtered(using favorites: Favorites, in day: Conference) -> Self {
     self
-      .map { SharedModels.Schedule(time: $0.time, sessions: $0.sessions.favorited) }
+      .map { SharedModels.Schedule(time: $0.time, sessions: $0.sessions.filter { favorites.isFavorited($0, in: day) }) }
       .filter { $0.sessions.count > 0 }
   }
 }
