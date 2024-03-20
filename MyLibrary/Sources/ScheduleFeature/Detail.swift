@@ -103,6 +103,11 @@ public struct ScheduleDetailView: View {
       speakers
         .frame(maxWidth: 700)  // Readable content width for iPad
     }
+    .toolbar {
+      ToolbarItem(placement: .topBarTrailing) {
+        favoriteIcon()
+      }
+    }
     .sheet(item: $store.scope(state: \.destination?.safari, action: \.destination.safari)) {
       sheetStore in
       SafariViewRepresentation(url: sheetStore.url)
@@ -151,6 +156,17 @@ public struct ScheduleDetailView: View {
     )
     .padding()
 
+  }
+
+  @ViewBuilder
+  func favoriteIcon() -> some View {
+    if store.isFavorited {
+      Image(systemName: "star.fill")
+        .foregroundColor(.yellow)
+    } else {
+      Image(systemName: "star")
+        .foregroundColor(.gray)
+    }
   }
 }
 
