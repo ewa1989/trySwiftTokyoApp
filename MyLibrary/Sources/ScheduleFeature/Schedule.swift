@@ -32,7 +32,7 @@ public struct Schedule {
     var day1: Conference?
     var day2: Conference?
     var workshop: Conference?
-    var selectedFilter: Action.FilterItem = .all
+    var selectedFilter: FilterItem = .all
     var favorites: Favorites = .init(eachConferenceFavorites: [])
     @Presents var destination: Destination.State?
 
@@ -52,11 +52,11 @@ public struct Schedule {
       case disclosureTapped(Session)
       case favoriteIconTapped(Session)
     }
+  }
 
-    public enum FilterItem: String, CaseIterable {
-      case all = "All"
-      case favorite = "Favorite"
-    }
+  public enum FilterItem: String, CaseIterable {
+    case all = "All"
+    case favorite = "Favorite"
   }
 
   @Reducer(state: .equatable)
@@ -198,7 +198,7 @@ public struct ScheduleView: View {
       ToolbarItem(placement: .topBarTrailing) {
         Menu {
           Picker(String(localized: "Filter", bundle: .module), selection: $store.selectedFilter, content: {
-            ForEach(Schedule.Action.FilterItem.allCases, id:\.self) { item in
+            ForEach(Schedule.FilterItem.allCases, id:\.self) { item in
               Text(String(localized: String.LocalizationValue(item.rawValue), bundle: .module))
                 .tag(item)
             }
