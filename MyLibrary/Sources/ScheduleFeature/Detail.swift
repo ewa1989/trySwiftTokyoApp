@@ -9,19 +9,19 @@ public struct ScheduleDetail {
   @ObservableState
   public struct State: Equatable {
 
-    var title: String
-    var description: String
-    var requirements: String?
-    var speakers: [Speaker]
+    var session: Session
+    var title: String { session.title }
+    var description: String { session.description! }
+    var requirements: String? { session.requirements }
+    var speakers: [Speaker] { session.speakers! }
+
+    var isFavorited: Bool
+
     @Presents var destination: Destination.State?
 
-    public init(
-      title: String, description: String, requirements: String? = nil, speakers: [Speaker]
-    ) {
-      self.title = title
-      self.description = description
-      self.requirements = requirements
-      self.speakers = speakers
+    public init(session: Session, isFavorited: Bool) {
+      self.session = session
+      self.isFavorited = isFavorited
     }
   }
 
@@ -158,24 +158,29 @@ public struct ScheduleDetailView: View {
   ScheduleDetailView(
     store: .init(
       initialState: .init(
-        title: "What's new in try! Swift",
-        description: #"""
+        session: .init(
+          title: "What's new in try! Swift",
+          speakers: [
+            Speaker(
+              name: "Natasha Murashev",
+              imageName: "natasha",
+              bio:
+                "Natasha is an iOS developer by day and a robot by night. She organizes the try! Swift Conference around the world (including this one!). She's currently living the digital nomad life as her alter identity: @natashatherobot",
+              links: [
+                .init(
+                  name: "@natashatherobot",
+                  url: URL(string: "https://x.com/natashatherobot")!
+                )
+              ]
+            )
+          ],
+          place: nil,
+          description: #"""
           try! Swift is an international community gathering that focuses on the Swift programming language and its ecosystem. It brings together developers, industry experts, and enthusiasts for a series of talks, learning sessions, and networking opportunities. The event aims to foster collaboration, share the latest advancements and best practices, and inspire innovation within the Swift community.The revival of "try! Swift" signifies a renewed commitment to these goals, potentially after a period of hiatus or reduced activity, possibly due to global challenges like the COVID-19 pandemic. This resurgence would likely involve the organization of new events, either virtually or in-person, reflecting the latest trends and technologies within the Swift ecosystem. The revival indicates a strong, ongoing interest in Swift programming, with the community eager to reconvene, exchange ideas, and continue learning from each other.
           """#,
-        speakers: [
-          Speaker(
-            name: "Natasha Murashev",
-            imageName: "natasha",
-            bio:
-              "Natasha is an iOS developer by day and a robot by night. She organizes the try! Swift Conference around the world (including this one!). She's currently living the digital nomad life as her alter identity: @natashatherobot",
-            links: [
-              .init(
-                name: "@natashatherobot",
-                url: URL(string: "https://x.com/natashatherobot")!
-              )
-            ]
-          )
-        ]
+          requirements: nil
+        ),
+        isFavorited: false
       ),
       reducer: {
         ScheduleDetail()

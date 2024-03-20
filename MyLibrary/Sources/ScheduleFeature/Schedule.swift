@@ -88,17 +88,22 @@ public struct Schedule {
               return (.init(day1: day1, day2: day2, workshop: workshop), favorites)
             }))
       case let .view(.disclosureTapped(session)):
-        guard let description = session.description, let speakers = session.speakers else {
+        guard let _ = session.description, let _ = session.speakers else {
           return .none
+        }
+        let day = switch state.selectedDay {
+        case .day1:
+          state.day1!
+        case .day2:
+          state.day2!
+        case .day3:
+          state.workshop!
         }
         state.path.append(
           .detail(
             .init(
-              title: session.title,
-              description: description,
-              requirements: session.requirements,
-              speakers: speakers
-            )
+              session: session,
+              isFavorited: state.favorites.isFavorited(session, in: day))
           )
         )
         return .none
