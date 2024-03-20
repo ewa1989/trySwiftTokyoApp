@@ -91,14 +91,7 @@ public struct Schedule {
         guard let _ = session.description, let _ = session.speakers else {
           return .none
         }
-        let day = switch state.selectedDay {
-        case .day1:
-          state.day1!
-        case .day2:
-          state.day2!
-        case .day3:
-          state.workshop!
-        }
+        let day = selectedConference(of: state)
         state.path.append(
           .detail(
             .init(
@@ -108,19 +101,12 @@ public struct Schedule {
         )
         return .none
       case let .view(.favoriteIconTapped(session)):
-        let day = switch state.selectedDay {
-        case .day1:
-          state.day1!
-        case .day2:
-          state.day2!
-        case .day3:
-          state.workshop!
-        }
+        let conference = selectedConference(of: state)
         var favorites = state.favorites
-        favorites.updateFavoriteState(of: session, in: day)
+        favorites.updateFavoriteState(of: session, in: conference)
         return .run { [favorites = favorites] send in
           try? fileClient.saveFavorites(favorites)
-          await send(.savedFavorites(session, day))
+          await send(.savedFavorites(session, conference))
         }
       case let .savedFavorites(session, day):
         state.favorites.updateFavoriteState(of: session, in: day)
@@ -138,14 +124,7 @@ public struct Schedule {
         print(error)  // TODO: replace to Logger API
         return .none
       case let .path(.element(_, .detail(.delegate(.updateFavoriteState(session))))):
-        let day = switch state.selectedDay {
-        case .day1:
-          state.day1!
-        case .day2:
-          state.day2!
-        case .day3:
-          state.workshop!
-        }
+        let day = selectedConference(of: state)
         var favorites = state.favorites
         favorites.updateFavoriteState(of: session, in: day)
         return .run { [favorites = favorites] send in
@@ -159,6 +138,18 @@ public struct Schedule {
     .forEach(\.path, action: \.path)
     .ifLet(\.$destination, action: \.destination)
   }
+
+  private func selectedConference(of state: State) -> Conference {
+    return switch state.selectedDay {
+    case .day1:
+      state.day1!
+    case .day2:
+      state.day2!
+    case .day3:
+      state.workshop!
+    }
+  }
+
 }
 
 @ViewAction(for: Schedule.self)
