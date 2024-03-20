@@ -137,6 +137,21 @@ public struct Schedule {
       case let .fetchResponse(.failure(error)):
         print(error)  // TODO: replace to Logger API
         return .none
+      case let .path(.element(_, .detail(.delegate(.updateFavoriteState(session))))):
+        let day = switch state.selectedDay {
+        case .day1:
+          state.day1!
+        case .day2:
+          state.day2!
+        case .day3:
+          state.workshop!
+        }
+        var favorites = state.favorites
+        favorites.updateFavoriteState(of: session, in: day)
+        return .run { [favorites = favorites] send in
+          try? fileClient.saveFavorites(favorites)
+          await send(.savedFavorites(session, day))
+        }
       case .binding, .path, .destination:
         return .none
       }

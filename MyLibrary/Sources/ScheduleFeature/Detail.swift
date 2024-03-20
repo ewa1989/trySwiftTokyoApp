@@ -29,9 +29,15 @@ public struct ScheduleDetail {
     case binding(BindingAction<State>)
     case destination(PresentationAction<Destination.Action>)
     case view(View)
+    case delegate(Delegate)
 
     public enum View {
       case snsTapped(URL)
+      case favoriteIconTapped
+    }
+
+    public enum Delegate {
+      case updateFavoriteState(Session)
     }
   }
 
@@ -55,9 +61,16 @@ public struct ScheduleDetail {
         #elseif os(visionOS)
           return .run { _ in await openURL(url) }
         #endif
+      case .view(.favoriteIconTapped):
+        state.isFavorited.toggle()
+        return .run { [session = state.session] send in
+          await send(.delegate(.updateFavoriteState(session)))
+        }
       case .destination:
         return .none
       case .binding:
+        return .none
+      case .delegate:
         return .none
       }
     }
@@ -106,6 +119,9 @@ public struct ScheduleDetailView: View {
     .toolbar {
       ToolbarItem(placement: .topBarTrailing) {
         favoriteIcon()
+          .onTapGesture {
+            send(.favoriteIconTapped)
+          }
       }
     }
     .sheet(item: $store.scope(state: \.destination?.safari, action: \.destination.safari)) {
