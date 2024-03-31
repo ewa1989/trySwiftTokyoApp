@@ -109,7 +109,7 @@ public struct Schedule {
         )
         return .none
       case let .view(.favoriteIconTapped(session)):
-        let day = switch state.selectedDay {
+        let conference = switch state.selectedDay {
         case .day1:
           state.day1!
         case .day2:
@@ -118,10 +118,10 @@ public struct Schedule {
           state.workshop!
         }
         var favorites = state.favorites
-        favorites.updateFavoriteState(of: session, in: day)
+        favorites.updateFavoriteState(of: session, in: conference)
         return .run { [favorites = favorites] send in
           try? fileClient.saveFavorites(favorites)
-          await send(.savedFavorites(session, day))
+          await send(.savedFavorites(session, conference))
         }
       case let .savedFavorites(session, day):
         state.favorites.updateFavoriteState(of: session, in: day)
@@ -392,7 +392,7 @@ public struct ScheduleView: View {
     case .all:
       return conference.schedules
     case .favorite:
-      let day =
+      let conference =
       switch store.selectedDay {
       case .day1:
         store.day1!
@@ -401,7 +401,7 @@ public struct ScheduleView: View {
       case .day3:
         store.workshop!
       }
-      return conference.schedules.filtered(using: store.favorites, in: day)
+      return conference.schedules.filtered(using: store.favorites, in: conference)
     }
   }
 
