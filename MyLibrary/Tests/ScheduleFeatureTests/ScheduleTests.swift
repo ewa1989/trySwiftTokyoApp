@@ -100,12 +100,11 @@ final class ScheduleTests: XCTestCase {
     }
   }
 
-<<<<<<< HEAD
   @MainActor
   func testSyncFavoritesWithDetailView() async {
-    let initialState: ScheduleFeature.Schedule.State = .selectingDay1ScheduleWithNoFavorites
+    let initialState: ScheduleFeature.Schedule.State = ScheduleTests.selectingDay1ScheduleWithNoFavorites
     let lastSession = initialState.day1!.schedules.first!.sessions.last!
-    let lastSessionFavorited: Favorites = .init(eachConferenceFavorites: [(initialState.day1!, [lastSession])])
+    let lastSessionFavorited: Favorites = [initialState.day1!.title: [lastSession]]
     let store = TestStore(initialState: initialState) {
       Schedule()
     } withDependencies: {
@@ -120,7 +119,7 @@ final class ScheduleTests: XCTestCase {
       $0.favorites = lastSessionFavorited
     }
   }
-=======
+
   static let selectingDay1ScheduleWithNoFavorites = {
     var initialState = Schedule.State()
     initialState.selectedDay = .day1
@@ -136,5 +135,16 @@ final class ScheduleTests: XCTestCase {
     initialState.favorites = [initialState.day1!.title: [firstSession]]
     return initialState
   }()
->>>>>>> add-favorited-only-filter
+
+  @MainActor
+  func testSchedulesFiltered() {
+    let schedulesWith2Sessions = [Schedule(time: Date(timeIntervalSince1970: 10_000), sessions: [.mock1, .mock2])]
+    let conference = Conference(id: 1, title: "conference", date: Date(timeIntervalSince1970: 1_000), schedules: schedulesWith2Sessions)
+    let favoritesMock1Only: Favorites = [conference.title: [.mock1]]
+
+    let actual = schedulesWith2Sessions.filtered(using: favoritesMock1Only, in: conference)
+
+    let schedulesMock1Only = [Schedule(time: Date(timeIntervalSince1970: 10_000), sessions: [.mock1])]
+    XCTAssertEqual(actual, schedulesMock1Only)
+  }
 }
