@@ -1,7 +1,7 @@
 import ComposableArchitecture
 import DataClient
+import FileClient
 import Foundation
-import Safari
 import SharedModels
 import SwiftUI
 import TipKit
@@ -33,7 +33,7 @@ public struct Schedule {
     var day2: Conference?
     var workshop: Conference?
     var selectedFilter: FilterItem = .all
-    var favorites: Favorites = .init(eachConferenceFavorites: [])
+    var favorites: Favorites = [:]
     @Presents var destination: Destination.State?
 
     public init() {}
@@ -44,7 +44,8 @@ public struct Schedule {
     case path(StackAction<Path.State, Path.Action>)
     case destination(PresentationAction<Destination.Action>)
     case view(View)
-    case fetchResponse(Result<(schedules: SchedulesResponse, favorites: Favorites), Error>)
+    case fetchResponse(Result<SchedulesResponse, Error>)
+    case loadResponse(Result<Favorites, Error>)
     case savedFavorites(Session, Conference)
 
     public enum View {
@@ -69,7 +70,6 @@ public struct Schedule {
 
   @Dependency(DataClient.self) var dataClient
   @Dependency(FileClient.self) var fileClient
-  @Dependency(\.openURL) var openURL
 
   public init() {}
 
@@ -78,15 +78,21 @@ public struct Schedule {
     Reduce { state, action in
       switch action {
       case .view(.onAppear):
-        return .send(
-          .fetchResponse(
-            Result {
-              let day1 = try dataClient.fetchDay1()
-              let day2 = try dataClient.fetchDay2()
-              let workshop = try dataClient.fetchWorkshop()
-              let favorites = try fileClient.loadFavorites()
-              return (.init(day1: day1, day2: day2, workshop: workshop), favorites)
-            }))
+        return .run { send in
+          await send(
+            .fetchResponse(
+              Result {
+                let day1 = try dataClient.fetchDay1()
+                let day2 = try dataClient.fetchDay2()
+                let workshop = try dataClient.fetchWorkshop()
+                return .init(day1: day1, day2: day2, workshop: workshop)
+              }))
+          await send(
+            .loadResponse(
+              Result {
+                try fileClient.loadFavorites()
+              }))
+        }
       case let .view(.disclosureTapped(session)):
         guard let description = session.description, let speakers = session.speakers else {
           return .none
@@ -121,15 +127,23 @@ public struct Schedule {
         state.favorites.updateFavoriteState(of: session, in: day)
         return .none
       case let .fetchResponse(.success(response)):
-        state.day1 = response.schedules.day1
-        state.day2 = response.schedules.day2
-        state.workshop = response.schedules.workshop
-        state.favorites = response.favorites
+        state.day1 = response.day1
+        state.day2 = response.day2
+        state.workshop = response.workshop
         return .none
       case let .fetchResponse(.failure(error as DecodingError)):
         assertionFailure(error.localizedDescription)
         return .none
       case let .fetchResponse(.failure(error)):
+        print(error)  // TODO: replace to Logger API
+        return .none
+      case let .loadResponse(.success(response)):
+        state.favorites = response
+        return .none
+      case let .loadResponse(.failure(error as DecodingError)):
+        assertionFailure(error.localizedDescription)
+        return .none
+      case let .loadResponse(.failure(error)):
         print(error)  // TODO: replace to Logger API
         return .none
       case .binding, .path, .destination:
@@ -138,6 +152,21 @@ public struct Schedule {
     }
     .forEach(\.path, action: \.path)
     .ifLet(\.$destination, action: \.destination)
+  }
+}
+
+private extension Favorites {
+  mutating func updateFavoriteState(of session: Session, in conference: Conference) {
+    guard var favorites = self[conference.title] else {
+      self[conference.title] = [session]
+      return
+    }
+    if favorites.contains(session) {
+      self[conference.title] = favorites.filter { $0 != session }
+    } else {
+      favorites.append(session)
+      self[conference.title] = favorites
+    }
   }
 }
 
@@ -343,7 +372,13 @@ public struct ScheduleView: View {
       store.workshop!
     }
 
-    if store.favorites.isFavorited(session, in: conference) {
+    let isFavorited = {
+      guard let favorites = store.favorites[conference.title] else {
+        return false
+      }
+      return favorites.contains(session)
+    }()
+    if isFavorited {
       Image(systemName: "star.fill")
         .foregroundColor(.yellow)
     } else {
@@ -388,6 +423,21 @@ public struct ScheduleView: View {
     }
     let formatter = ListFormatter()
     return formatter.string(from: givenNames)!
+  }
+}
+
+private extension [SharedModels.Schedule] {
+  func filtered(using favorites: Favorites, in day: Conference) -> Self {
+    self
+      .map { 
+        SharedModels.Schedule(time: $0.time, sessions: $0.sessions.filter {
+          guard let favorites = favorites[day.title] else {
+            return false
+          }
+          return favorites.contains($0)
+        })
+      }
+      .filter { $0.sessions.count > 0 }
   }
 }
 
