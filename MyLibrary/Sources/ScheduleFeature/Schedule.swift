@@ -98,17 +98,11 @@ public struct Schedule {
           return .none
         }
         let conference = selectedConference(of: state)
-        let isFavorited = {
-          guard let favorites = state.favorites[conference.title] else {
-            return false
-          }
-          return favorites.contains(session)
-        }()
         state.path.append(
           .detail(
             .init(
               session: session,
-              isFavorited: isFavorited)
+              isFavorited: state.favorites.isFavorited(session, in: conference))
           )
         )
         return .none
@@ -184,6 +178,13 @@ private extension Favorites {
       favorites.append(session)
       self[conference.title] = favorites
     }
+  }
+
+  func isFavorited(_ session: Session, in conference: Conference) -> Bool {
+    guard let favorites = self[conference.title] else {
+      return false
+    }
+    return favorites.contains(session)
   }
 }
 
@@ -389,13 +390,7 @@ public struct ScheduleView: View {
       store.workshop!
     }
 
-    let isFavorited = {
-      guard let favorites = store.favorites[conference.title] else {
-        return false
-      }
-      return favorites.contains(session)
-    }()
-    if isFavorited {
+    if store.favorites.isFavorited(session, in: conference) {
       Image(systemName: "star.fill")
         .foregroundColor(.yellow)
     } else {
@@ -446,14 +441,7 @@ public struct ScheduleView: View {
 private extension [SharedModels.Schedule] {
   func filtered(using favorites: Favorites, in conference: Conference) -> Self {
     self
-      .map { 
-        SharedModels.Schedule(time: $0.time, sessions: $0.sessions.filter {
-          guard let favorites = favorites[conference.title] else {
-            return false
-          }
-          return favorites.contains($0)
-        })
-      }
+      .map { SharedModels.Schedule(time: $0.time, sessions: $0.sessions.filter { favorites.isFavorited($0, in: conference) })}
       .filter { $0.sessions.count > 0 }
   }
 }
