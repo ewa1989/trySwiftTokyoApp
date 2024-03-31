@@ -97,9 +97,9 @@ public struct Schedule {
         guard let _ = session.description, let _ = session.speakers else {
           return .none
         }
-        let day = selectedConference(of: state)
+        let conference = selectedConference(of: state)
         let isFavorited = {
-          guard let favorites = state.favorites[day.title] else {
+          guard let favorites = state.favorites[conference.title] else {
             return false
           }
           return favorites.contains(session)
@@ -144,12 +144,12 @@ public struct Schedule {
         print(error)  // TODO: replace to Logger API
         return .none
       case let .path(.element(_, .detail(.delegate(.updateFavoriteState(session))))):
-        let day = selectedConference(of: state)
+        let conference = selectedConference(of: state)
         var favorites = state.favorites
-        favorites.updateFavoriteState(of: session, in: day)
+        favorites.updateFavoriteState(of: session, in: conference)
         return .run { [favorites = favorites] send in
           try? fileClient.saveFavorites(favorites)
-          await send(.savedFavorites(session, day))
+          await send(.savedFavorites(session, conference))
         }
       case .binding, .path, .destination:
         return .none
