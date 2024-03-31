@@ -426,7 +426,7 @@ public struct ScheduleView: View {
   }
 }
 
-private extension [SharedModels.Schedule] {
+extension [SharedModels.Schedule] {
   func filtered(using favorites: Favorites, in conference: Conference) -> Self {
     self
       .map { 
