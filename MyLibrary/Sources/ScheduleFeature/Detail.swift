@@ -1,6 +1,6 @@
 import ComposableArchitecture
+import DependencyExtra
 import Foundation
-import Safari
 import SharedModels
 import SwiftUI
 
@@ -17,8 +17,6 @@ public struct ScheduleDetail {
 
     var isFavorited: Bool
 
-    @Presents var destination: Destination.State?
-
     public init(session: Session, isFavorited: Bool) {
       self.session = session
       self.isFavorited = isFavorited
@@ -27,7 +25,6 @@ public struct ScheduleDetail {
 
   public enum Action: ViewAction, BindableAction {
     case binding(BindingAction<State>)
-    case destination(PresentationAction<Destination.Action>)
     case view(View)
     case delegate(Delegate)
 
@@ -41,12 +38,7 @@ public struct ScheduleDetail {
     }
   }
 
-  @Reducer(state: .equatable)
-  public enum Destination {
-    case safari(Safari)
-  }
-
-  @Dependency(\.openURL) var openURL
+  @Dependency(\.safari) var safari
 
   public init() {}
 
@@ -55,26 +47,18 @@ public struct ScheduleDetail {
     Reduce { state, action in
       switch action {
       case let .view(.snsTapped(url)):
-        #if os(iOS) || os(macOS)
-          state.destination = .safari(.init(url: url))
-          return .none
-        #elseif os(visionOS)
-          return .run { _ in await openURL(url) }
-        #endif
+        return .run { _ in await safari(url) }
       case .view(.favoriteIconTapped):
         state.isFavorited.toggle()
         return .run { [session = state.session] send in
           await send(.delegate(.updateFavoriteState(session)))
         }
-      case .destination:
-        return .none
       case .binding:
         return .none
       case .delegate:
         return .none
       }
     }
-    .ifLet(\.$destination, action: \.destination)
   }
 }
 
@@ -123,11 +107,6 @@ public struct ScheduleDetailView: View {
             send(.favoriteIconTapped)
           }
       }
-    }
-    .sheet(item: $store.scope(state: \.destination?.safari, action: \.destination.safari)) {
-      sheetStore in
-      SafariViewRepresentation(url: sheetStore.url)
-        .ignoresSafeArea()
     }
   }
 

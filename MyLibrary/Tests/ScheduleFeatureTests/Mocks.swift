@@ -1,5 +1,6 @@
 import Foundation
 import SharedModels
+import FileClient
 
 @testable import ScheduleFeature
 
@@ -99,26 +100,5 @@ extension Speaker {
 }
 
 extension Favorites {
-  static let mock1 = favoritedSession1InConference1
-  static let favoritedSession1InConference1 = Self(eachConferenceFavorites: [
-    (.mock1, [.mock1])
-  ])
-}
-
-extension ScheduleFeature.Schedule.State {
-  static let selectingDay1ScheduleWithNoFavorites = {
-    var initialState = Schedule.State()
-    initialState.selectedDay = .day1
-    initialState.day1 = .mock1
-    return initialState
-  }()
-
-  static let selectingDay1ScheduleWithOneFavorite = {
-    var initialState = Schedule.State()
-    initialState.selectedDay = .day1
-    initialState.day1 = .mock1
-    let firstSession = initialState.day1!.schedules.first!.sessions.first!
-    initialState.favorites = .init(eachConferenceFavorites: [(initialState.day1!, [firstSession])])
-    return initialState
-  }()
+  static let mock1 =  [Conference.mock1.title: [Session.mock1]]
 }
