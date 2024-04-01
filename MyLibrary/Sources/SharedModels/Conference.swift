@@ -1,11 +1,13 @@
 import Foundation
 
 public struct Conference: Codable, Equatable, Hashable, Sendable {
+  public var id: Int
   public var title: String
   public var date: Date
   public var schedules: [Schedule]
 
   public init(id: Int, title: String, date: Date, schedules: [Schedule]) {
+    self.id = id
     self.title = title
     self.date = date
     self.schedules = schedules
