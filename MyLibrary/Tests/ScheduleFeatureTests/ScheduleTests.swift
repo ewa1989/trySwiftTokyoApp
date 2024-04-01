@@ -117,14 +117,22 @@ final class ScheduleTests: XCTestCase {
   }()
 
   @MainActor
-  func testSchedulesFiltered() {
-    let schedulesWith2Sessions = [Schedule(time: Date(timeIntervalSince1970: 10_000), sessions: [.mock1, .mock2])]
-    let conference = Conference(id: 1, title: "conference", date: Date(timeIntervalSince1970: 1_000), schedules: schedulesWith2Sessions)
-    let favoritesMock1Only: Favorites = [conference.title: [.mock1]]
-
-    let actual = schedulesWith2Sessions.filtered(using: favoritesMock1Only, in: conference)
-
+  func testSchedulesFilteredFavoritesOnly() async {
+    let initialState: ScheduleFeature.Schedule.State = ScheduleTests.selectingDay1ScheduleWithOneFavorite
+    let store = TestStore(initialState: initialState) {
+      Schedule()
+    }
     let schedulesMock1Only = [Schedule(time: Date(timeIntervalSince1970: 10_000), sessions: [.mock1])]
-    XCTAssertEqual(actual, schedulesMock1Only)
+    let expected = Conference(
+      id: 1,
+      title: "conference1",
+      date: Date(timeIntervalSince1970: 1_000),
+      schedules: schedulesMock1Only
+    )
+
+    await store.send(.binding(.set(\.selectedFilter, Schedule.FilterItem.favorite))) {
+      $0.selectedFilter = .favorite
+      XCTAssertEqual($0.day1ToShow, expected)
+    }
   }
 }

@@ -36,7 +36,37 @@ public struct Schedule {
     var favorites: Favorites = [:]
     @Presents var destination: Destination.State?
 
+    var day1ToShow: Conference? {
+      filteredConference(of: .day1)
+    }
+    var day2ToShow: Conference? {
+      filteredConference(of: .day2)
+    }
+    var workshopToShow: Conference? {
+      filteredConference(of: .day3)
+    }
+
     public init() {}
+
+    func filteredConference(of day: Days) -> Conference? {
+      let conference =
+      switch selectedDay {
+      case .day1:
+        day1
+      case .day2:
+        day2
+      case .day3:
+        workshop
+      }
+      guard let conference = conference else { return nil }
+      switch selectedFilter {
+      case .all:
+        return conference
+      case .favorite:
+        let schedules = conference.schedules.filtered(using: favorites, in: conference)
+        return Conference(id: conference.id, title: conference.title, date: conference.date, schedules: schedules)
+      }
+    }
   }
 
   public enum Action: BindableAction, ViewAction {
@@ -170,6 +200,21 @@ private extension Favorites {
   }
 }
 
+extension [SharedModels.Schedule] {
+  func filtered(using favorites: Favorites, in conference: Conference) -> Self {
+    self
+      .map {
+        SharedModels.Schedule(time: $0.time, sessions: $0.sessions.filter {
+          guard let favorites = favorites[conference.title] else {
+            return false
+          }
+          return favorites.contains($0)
+        })
+      }
+      .filter { $0.sessions.count > 0 }
+  }
+}
+
 @ViewAction(for: Schedule.self)
 public struct ScheduleView: View {
 
@@ -204,19 +249,19 @@ public struct ScheduleView: View {
       .padding(.horizontal)
       switch store.selectedDay {
       case .day1:
-        if let day1 = store.day1 {
+        if let day1 = store.day1ToShow {
           conferenceList(conference: day1)
         } else {
           Text("")
         }
       case .day2:
-        if let day2 = store.day2 {
+        if let day2 = store.day2ToShow {
           conferenceList(conference: day2)
         } else {
           Text("")
         }
       case .day3:
-        if let workshop = store.workshop {
+        if let workshop = store.workshopToShow {
           conferenceList(conference: workshop)
         } else {
           Text("")
@@ -253,9 +298,8 @@ public struct ScheduleView: View {
       Text(conference.date, style: .date)
         .font(.title2)
 
-      let schedules = extractFilteredSchedules(from: conference)
-      if schedules.count > 0 {
-        ForEach(schedules, id: \.self) { schedule in
+      if conference.schedules.count > 0 {
+        ForEach(conference.schedules, id: \.self) { schedule in
           VStack(alignment: .leading, spacing: 4) {
             Text(schedule.time, style: .time)
               .font(.subheadline.bold())
@@ -387,24 +431,6 @@ public struct ScheduleView: View {
     }
   }
 
-  func extractFilteredSchedules(from conference: Conference) -> [SharedModels.Schedule] {
-    switch store.selectedFilter {
-    case .all:
-      return conference.schedules
-    case .favorite:
-      let conference =
-      switch store.selectedDay {
-      case .day1:
-        store.day1!
-      case .day2:
-        store.day2!
-      case .day3:
-        store.workshop!
-      }
-      return conference.schedules.filtered(using: store.favorites, in: conference)
-    }
-  }
-
   func officeHourTitle(speakers: [Speaker]) -> String {
     let names = givenNameList(speakers: speakers)
     return String(localized: "Office hour \(names)", bundle: .module)
@@ -423,21 +449,6 @@ public struct ScheduleView: View {
     }
     let formatter = ListFormatter()
     return formatter.string(from: givenNames)!
-  }
-}
-
-extension [SharedModels.Schedule] {
-  func filtered(using favorites: Favorites, in conference: Conference) -> Self {
-    self
-      .map { 
-        SharedModels.Schedule(time: $0.time, sessions: $0.sessions.filter {
-          guard let favorites = favorites[conference.title] else {
-            return false
-          }
-          return favorites.contains($0)
-        })
-      }
-      .filter { $0.sessions.count > 0 }
   }
 }
 
