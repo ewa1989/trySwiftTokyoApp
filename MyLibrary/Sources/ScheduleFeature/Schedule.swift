@@ -1,5 +1,6 @@
 import ComposableArchitecture
 import DataClient
+import FileClient
 import Foundation
 import SharedModels
 import SwiftUI
@@ -31,6 +32,7 @@ public struct Schedule {
     var day1: Conference?
     var day2: Conference?
     var workshop: Conference?
+    var favorites: Favorites = [:]
     @Presents var destination: Destination.State?
 
     public init() {}
@@ -42,10 +44,13 @@ public struct Schedule {
     case destination(PresentationAction<Destination.Action>)
     case view(View)
     case fetchResponse(Result<SchedulesResponse, Error>)
+    case loadResponse(Result<Favorites, Error>)
+    case savedFavorites(Session, Conference)
 
     public enum View {
       case onAppear
       case disclosureTapped(Session)
+      case favoriteIconTapped(Session)
     }
   }
 
@@ -58,6 +63,7 @@ public struct Schedule {
   public enum Destination {}
 
   @Dependency(DataClient.self) var dataClient
+  @Dependency(FileClient.self) var fileClient
 
   public init() {}
 
@@ -66,14 +72,21 @@ public struct Schedule {
     Reduce { state, action in
       switch action {
       case .view(.onAppear):
-        return .send(
-          .fetchResponse(
-            Result {
-              let day1 = try dataClient.fetchDay1()
-              let day2 = try dataClient.fetchDay2()
-              let workshop = try dataClient.fetchWorkshop()
-              return .init(day1: day1, day2: day2, workshop: workshop)
-            }))
+        return .run { send in
+          await send(
+            .fetchResponse(
+              Result {
+                let day1 = try dataClient.fetchDay1()
+                let day2 = try dataClient.fetchDay2()
+                let workshop = try dataClient.fetchWorkshop()
+                return .init(day1: day1, day2: day2, workshop: workshop)
+              }))
+          await send(
+            .loadResponse(
+              Result {
+                try fileClient.loadFavorites()
+              }))
+        }
       case let .view(.disclosureTapped(session)):
         guard let description = session.description, let speakers = session.speakers else {
           return .none
@@ -89,6 +102,24 @@ public struct Schedule {
           )
         )
         return .none
+      case let .view(.favoriteIconTapped(session)):
+        let conference = switch state.selectedDay {
+        case .day1:
+          state.day1!
+        case .day2:
+          state.day2!
+        case .day3:
+          state.workshop!
+        }
+        var favorites = state.favorites
+        favorites.updateFavoriteState(of: session, in: conference)
+        return .run { [favorites = favorites] send in
+          try? fileClient.saveFavorites(favorites)
+          await send(.savedFavorites(session, conference))
+        }
+      case let .savedFavorites(session, day):
+        state.favorites.updateFavoriteState(of: session, in: day)
+        return .none
       case let .fetchResponse(.success(response)):
         state.day1 = response.day1
         state.day2 = response.day2
@@ -100,12 +131,36 @@ public struct Schedule {
       case let .fetchResponse(.failure(error)):
         print(error)  // TODO: replace to Logger API
         return .none
+      case let .loadResponse(.success(response)):
+        state.favorites = response
+        return .none
+      case let .loadResponse(.failure(error as DecodingError)):
+        assertionFailure(error.localizedDescription)
+        return .none
+      case let .loadResponse(.failure(error)):
+        print(error)  // TODO: replace to Logger API
+        return .none
       case .binding, .path, .destination:
         return .none
       }
     }
     .forEach(\.path, action: \.path)
     .ifLet(\.$destination, action: \.destination)
+  }
+}
+
+private extension Favorites {
+  mutating func updateFavoriteState(of session: Session, in conference: Conference) {
+    guard var favorites = self[conference.title] else {
+      self[conference.title] = [session]
+      return
+    }
+    if favorites.contains(session) {
+      self[conference.title] = favorites.filter { $0 != session }
+    } else {
+      favorites.append(session)
+      self[conference.title] = favorites
+    }
   }
 }
 
@@ -257,6 +312,38 @@ public struct ScheduleView: View {
         }
       }
       .frame(maxWidth: .infinity, alignment: .leading)
+
+      favoriteIcon(for: session)
+        .onTapGesture {
+          send(.favoriteIconTapped(session))
+        }
+    }
+  }
+
+  @ViewBuilder
+  func favoriteIcon(for session: Session) -> some View {
+    let conference = 
+    switch store.selectedDay {
+    case .day1:
+      store.day1!
+    case .day2:
+      store.day2!
+    case .day3:
+      store.workshop!
+    }
+
+    let isFavorited = {
+      guard let favorites = store.favorites[conference.title] else {
+        return false
+      }
+      return favorites.contains(session)
+    }()
+    if isFavorited {
+      Image(systemName: "star.fill")
+        .foregroundColor(.yellow)
+    } else {
+      Image(systemName: "star")
+        .foregroundColor(.gray)
     }
   }
 
